@@ -1,0 +1,2650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Admin - Ethereal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            color: #1e293b;
+            overflow: hidden;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        .glass-sidebar {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            border-right: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.6);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-8px);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .btn-action {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4); }
+        
+        .input-pill {
+            background: rgba(255,255,255,0.5);
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .input-pill:focus {
+            background: white;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            outline: none;
+        }
+
+        #detail-window {
+            position: fixed; top: 20px; right: 20px; bottom: 20px; width: 550px;
+            border-radius: 30px;
+            z-index: 50;
+            transform: translateX(120%);
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #detail-window.active { transform: translateX(0); }
+        
+        #panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 8px;
+            margin-bottom: 16px;
+            max-height: calc(100vh - 200px);
+        }
+        
+        #panel-content::-webkit-scrollbar,
+        .glass-sidebar::-webkit-scrollbar,
+        .overflow-y-auto::-webkit-scrollbar {
+            width: 6px;
+        }
+        #panel-content::-webkit-scrollbar-track,
+        .glass-sidebar::-webkit-scrollbar-track,
+        .overflow-y-auto::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+        }
+        #panel-content::-webkit-scrollbar-thumb,
+        .glass-sidebar::-webkit-scrollbar-thumb,
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+        
+        .glass-sidebar {
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) rgba(255,255,255,0.3);
+        }
+
+        .floating-row {
+            transition: all 0.2s ease;
+            background: rgba(255,255,255,0.6);
+            margin-bottom: 8px;
+            border-radius: 16px;
+        }
+        .floating-row:hover {
+            background: white;
+            transform: scale(1.01);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .nav-link { border-radius: 16px; transition: all 0.3s; color: #64748b; }
+        .nav-link:hover { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
+        .nav-link.active { 
+            background: linear-gradient(135deg, #6366f1, #818cf8); 
+            color: white; 
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+        }
+        
+        .fade-enter { animation: fadeEnter 0.6s ease forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes fadeEnter { to { opacity: 1; transform: translateY(0); } }
+
+        .report-card { transition: all 0.3s ease; }
+        .report-card:hover { transform: translateX(5px); }
+        
+        .session-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+        .badge-finalized { background: #d1fae5; color: #065f46; }
+        .badge-progress { background: #fef3c7; color: #92400e; }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.7);
+            border-radius: 20px;
+            padding: 1.5rem;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        .stat-value { font-size: 2rem; font-weight: 700; color: #1e293b; }
+        .stat-label { font-size: 0.8rem; text-transform: uppercase; color: #64748b; font-weight: 600; }
+
+        .status-good { background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .status-warning { background: #fed7aa; color: #9a3412; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .status-danger { background: #fee2e2; color: #b91c1c; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        
+        .edit-btn, .del-btn { transition: all 0.2s ease; cursor: pointer; }
+        .edit-btn:hover { color: var(--primary) !important; transform: scale(1.1); }
+        .del-btn:hover { color: #ef4444 !important; transform: scale(1.1); }
+        
+        .custom-alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-left: 4px solid var(--primary);
+            z-index: 9999;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            max-width: 350px;
+        }
+        .custom-alert.show { transform: translateX(0); }
+        .custom-alert.error { border-left-color: #ef4444; }
+        .custom-alert.success { border-left-color: #10b981; }
+        .custom-alert.warning { border-left-color: #f59e0b; }
+        
+        .super-admin-badge {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        
+        select.input-pill {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+        
+        .password-input-container {
+            position: relative;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #64748b;
+        }
+        .password-toggle:hover {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body class="flex h-screen">
+
+    <aside class="w-72 glass-sidebar flex flex-col h-full z-20 shadow-2xl">
+        <div class="p-8 flex flex-col items-center shrink-0">
+            <div class="w-24 h-24 bg-white/50 rounded-full flex items-center justify-center mb-4 shadow-sm backdrop-blur-sm">
+                <img src="src/hisLogo.png" alt="University Logo" class="w-16 h-16 object-contain">
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 tracking-tight">University<span class="text-indigo-600">Admin</span></h1>
+        </div>
+
+        <nav class="flex-1 px-5 py-6 space-y-3 overflow-y-auto">
+            <button onclick="nav('view-home')" class="nav-link active w-full p-4 flex items-center font-medium"><i class="fas fa-grid-2 mr-4 text-lg"></i> Dashboard</button>
+            <button onclick="loadFilieres()" class="nav-link w-full p-4 flex items-center font-medium"><i class="fas fa-layer-group mr-4 text-lg"></i> Structure</button>
+            <button onclick="loadProfs()" class="nav-link w-full p-4 flex items-center font-medium"><i class="fas fa-chalkboard-user mr-4 text-lg"></i> Professors</button>
+            <button onclick="nav('view-reports')" class="nav-link w-full p-4 flex items-center font-medium"><i class="fas fa-file-invoice mr-4 text-lg"></i> Attendance Reports</button>
+            <button onclick="nav('view-prof-attendance')" class="nav-link w-full p-4 flex items-center font-medium"><i class="fas fa-clock mr-4 text-lg"></i> Professor Hours</button>
+            <button onclick="nav('view-student-attendance')" class="nav-link w-full p-4 flex items-center font-medium"><i class="fas fa-user-graduate mr-4 text-lg"></i> Student Tracking</button>
+            <button onclick="nav('view-settings')" class="nav-link w-full p-4 flex items-center font-medium"><i class="fas fa-gear mr-4 text-lg"></i> Settings</button>
+        </nav>
+
+        <div class="p-6 shrink-0">
+            <button onclick="logout()" class="w-full py-3 rounded-2xl bg-red-50 text-red-500 font-bold hover:bg-red-500 hover:text-white transition shadow-sm"><i class="fas fa-power-off mr-2"></i> Sign Out</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full relative z-10">
+        
+        <header class="h-20 px-10 flex items-center justify-between shrink-0">
+            <div class="glass-panel px-6 py-2 rounded-full flex items-center gap-3">
+                <img src="src/hisLogo.png" alt="Logo" class="w-6 h-6 object-contain">
+                <span class="text-sm font-semibold text-gray-600">Current Session: </span>
+                <span id="admin-email" class="text-sm font-bold text-indigo-600">checking...</span>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-indigo-600 font-bold">A</div>
+        </header>
+
+        <div id="main-content" class="flex-1 overflow-y-auto px-10 pb-10 scroll-smooth">
+            
+            <div id="view-login" class="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-xl">
+                <div class="glass-panel p-10 rounded-[40px] w-full max-w-sm text-center shadow-2xl border-white/60">
+                    <img src="src/hisLogo.png" alt="University Logo" class="w-24 h-24 mx-auto mb-6 object-contain">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Welcome Back</h2>
+                    <p class="text-gray-500 mb-8">Access the management console</p>
+                    <div class="space-y-4">
+                        <input id="loginEmail" class="input-pill w-full p-4 rounded-xl" placeholder="Email Address">
+                        <input id="loginPass" type="password" class="input-pill w-full p-4 rounded-xl" placeholder="Password">
+                    </div>
+                    <button onclick="login()" class="mt-8 w-full py-4 rounded-xl bg-indigo-600 text-white font-bold shadow-lg hover:shadow-indigo-500/40 transition hover:-translate-y-1">Enter Portal</button>
+                </div>
+            </div>
+
+            <div id="view-home" class="view-section fade-enter">
+                <div class="mb-10 flex items-center gap-4">
+                    <img src="src/hisLogo.png" alt="Logo" class="w-16 h-16 object-contain">
+                    <div>
+                        <h1 class="text-4xl font-bold text-white drop-shadow-md">Overview</h1>
+                        <p class="text-white/80 text-lg">Welcome to the control center.</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div onclick="loadFilieres()" class="glass-card p-8 cursor-pointer group">
+                        <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-sm group-hover:scale-110 transition"><i class="fas fa-sitemap"></i></div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Structure</h3>
+                        <p class="text-gray-500">Manage University Hierarchy</p>
+                    </div>
+                    <div onclick="loadProfs()" class="glass-card p-8 cursor-pointer group">
+                        <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-sm group-hover:scale-110 transition"><i class="fas fa-user-tie"></i></div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Professors</h3>
+                        <p class="text-gray-500">Faculty Management</p>
+                    </div>
+                    
+                    <div onclick="nav('view-reports')" class="glass-card p-8 cursor-pointer group">
+                        <div class="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-sm group-hover:scale-110 transition"><i class="fas fa-file-invoice"></i></div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Attendance Reports</h3>
+                        <p class="text-gray-500">Student Attendance</p>
+                    </div>
+
+                    <div onclick="nav('view-prof-attendance')" class="glass-card p-8 cursor-pointer group">
+                        <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-sm group-hover:scale-110 transition"><i class="fas fa-clock"></i></div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Professor Hours</h3>
+                        <p class="text-gray-500">Track Teaching Hours</p>
+                    </div>
+
+                    <div onclick="nav('view-student-attendance')" class="glass-card p-8 cursor-pointer group">
+                        <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-sm group-hover:scale-110 transition"><i class="fas fa-user-graduate"></i></div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Student Tracking</h3>
+                        <p class="text-gray-500">Monitor Absences/Presences</p>
+                    </div>
+                    
+                    <div onclick="nav('view-settings')" class="glass-card p-8 cursor-pointer group">
+                        <div class="w-14 h-14 bg-gray-50 text-gray-600 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-sm group-hover:scale-110 transition"><i class="fas fa-shield-alt"></i></div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Security</h3>
+                        <p class="text-gray-500">Admin Controls</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-list" class="view-section hidden fade-enter">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <button id="back-btn" class="text-white/80 hover:text-white font-semibold mb-2 flex items-center transition"><i class="fas fa-arrow-left mr-2"></i> Back</button>
+                        <h1 id="page-title" class="text-4xl font-bold text-white drop-shadow-sm">Title</h1>
+                        <p id="page-subtitle" class="text-white/80 text-lg">Subtitle</p>
+                    </div>
+                </div>
+                
+                <div id="items-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                </div>
+            </div>
+
+            <div id="view-year-details" class="view-section hidden fade-enter">
+                <div class="flex flex-col mb-10">
+                    <button onclick="loadYears()" class="text-white/80 hover:text-white font-bold mb-2 flex items-center w-fit"><i class="fas fa-arrow-left mr-2"></i> Back to Years</button>
+                    <h1 class="text-4xl font-bold text-white drop-shadow-sm"><span id="year-title"></span></h1>
+                    <p class="text-white/80 text-lg">Manage Groups & Modules</p>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    <div>
+                        <div class="glass-panel p-2 rounded-2xl flex justify-between items-center mb-6 px-4">
+                            <h2 class="text-xl font-bold text-gray-800 flex items-center"><span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3"><i class="fas fa-users"></i></span> Groups</h2>
+                            <button onclick="openAdd('group')" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md transition">Add Group</button>
+                        </div>
+                        <div id="groups-grid" class="space-y-4"></div>
+                    </div>
+
+                    <div>
+                        <div class="glass-panel p-2 rounded-2xl flex justify-between items-center mb-6 px-4">
+                            <h2 class="text-xl font-bold text-gray-800 flex items-center"><span class="w-8 h-8 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center mr-3"><i class="fas fa-book"></i></span> Modules</h2>
+                            <button onclick="openAdd('module')" class="bg-pink-500 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-pink-600 shadow-md transition">Add Module</button>
+                        </div>
+                        <div id="modules-grid" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-students" class="view-section hidden fade-enter">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <button onclick="loadYearDetails()" class="text-white/80 hover:text-white font-bold mb-2 flex items-center"><i class="fas fa-arrow-left mr-2"></i> Back to Groups</button>
+                        <h1 class="text-4xl font-bold text-white drop-shadow-sm">Student List</h1>
+                        <p class="text-white/80 text-lg">Group: <span id="group-title"></span></p>
+                    </div>
+                    <button onclick="openAdd('student')" class="bg-white text-indigo-600 px-6 py-3 rounded-2xl font-bold shadow-lg hover:shadow-xl hover:scale-105 transition flex items-center"><i class="fas fa-plus mr-2"></i> Enroll Student</button>
+                </div>
+
+                <div class="glass-panel p-1 rounded-3xl overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-white/50 border-b border-gray-200">
+                            <tr>
+                                <th class="p-6 text-xs uppercase text-gray-500 font-bold tracking-wider">Matricule</th>
+                                <th class="p-6 text-xs uppercase text-gray-500 font-bold tracking-wider">Full Name</th>
+                                <th class="p-6 text-xs uppercase text-gray-500 font-bold tracking-wider text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-list" class="p-2 block w-full" style="display: table-row-group;"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-reports" class="view-section hidden fade-enter p-10">
+                <div class="flex items-center gap-4 mb-8">
+                    <img src="src/hisLogo.png" alt="Logo" class="w-12 h-12 object-contain">
+                    <h2 class="text-4xl font-bold text-white drop-shadow-sm">Attendance Reports</h2>
+                </div>
+
+                <div class="flex gap-4 mb-6">
+                    <button onclick="filterReports('all')" id="filter-all" class="px-6 py-2 rounded-full glass-panel font-bold text-gray-700 hover:bg-white/80 transition">All Reports</button>
+                    <button onclick="filterReports('finalized')" id="filter-finalized" class="px-6 py-2 rounded-full glass-panel font-bold text-emerald-700 hover:bg-white/80 transition">Finalized</button>
+                    <button onclick="filterReports('in_progress')" id="filter-progress" class="px-6 py-2 rounded-full glass-panel font-bold text-amber-700 hover:bg-white/80 transition">In Progress</button>
+                </div>
+
+                <div class="mb-6">
+                    <input type="text" id="report-search" placeholder="Search by module, group, or professor..." class="input-pill w-full p-4 rounded-xl">
+                </div>
+
+                <div id="reports-grid" class="space-y-4">
+                    <p id="reports-loading" class="text-gray-500 font-medium p-8 glass-card"><i class="fas fa-spinner fa-spin mr-2"></i> Loading reports...</p>
+                </div>
+
+                <div id="reports-summary" class="mt-8 grid grid-cols-4 gap-4 hidden">
+                    <div class="glass-card p-4 text-center">
+                        <p class="text-2xl font-bold text-indigo-600" id="total-reports">0</p>
+                        <p class="text-xs text-gray-500">Total Reports</p>
+                    </div>
+                    <div class="glass-card p-4 text-center">
+                        <p class="text-2xl font-bold text-emerald-600" id="finalized-reports">0</p>
+                        <p class="text-xs text-gray-500">Finalized</p>
+                    </div>
+                    <div class="glass-card p-4 text-center">
+                        <p class="text-2xl font-bold text-amber-600" id="progress-reports">0</p>
+                        <p class="text-xs text-gray-500">In Progress</p>
+                    </div>
+                    <div class="glass-card p-4 text-center">
+                        <p class="text-2xl font-bold text-pink-600" id="total-sessions">0</p>
+                        <p class="text-xs text-gray-500">Total Sessions</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-prof-attendance" class="view-section hidden fade-enter p-10">
+                <div class="flex items-center gap-4 mb-8">
+                    <img src="src/hisLogo.png" alt="Logo" class="w-12 h-12 object-contain">
+                    <h2 class="text-4xl font-bold text-white drop-shadow-sm">Professor Teaching Hours</h2>
+                </div>
+
+                <div class="glass-panel p-6 rounded-3xl mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Professor</label>
+                            <select id="prof-filter" class="input-pill w-full p-3 rounded-xl">
+                                <option value="all">All Professors</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="loadProfessorAttendance()" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition flex-1">
+                                <i class="fas fa-search mr-2"></i> Apply Filter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-prof-hours">0</div>
+                        <div class="stat-label">Total Teaching Hours</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-prof-sessions">0</div>
+                        <div class="stat-label">Total Sessions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="avg-hours-per-prof">0</div>
+                        <div class="stat-label">Avg Hours/Professor</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="active-profs">0</div>
+                        <div class="stat-label">Active Professors</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-1 rounded-3xl overflow-hidden mb-8">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-white/50 border-b border-gray-200">
+                            <tr>
+                                <th class="p-6 text-xs uppercase text-gray-500 font-bold tracking-wider">Professor</th>
+                                <th class="p-6 text-xs uppercase text-gray-500 font-bold tracking-wider">Email</th>
+                                <th class="p-6 text-xs uppercase text-gray-500 font-bold tracking-wider">Total Sessions</th>
+                                <th class="p-6 text-xs uppercase text-gray-500 font-bold tracking-wider">Total Hours</th>
+                                <th class="p-6 text-xs uppercase text-gray-500 font-bold tracking-wider">Modules Taught</th>
+                                <th class="p-6 text-xs uppercase text-gray-500 font-bold tracking-wider text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prof-hours-list" class="p-2"></tbody>
+                    </table>
+                </div>
+
+                <div class="glass-panel p-6 rounded-3xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-800">Detailed Session Log</h3>
+                        <button onclick="downloadProfessorHours()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold transition flex items-center shadow-md">
+                            <i class="fas fa-file-excel mr-2"></i> Download All Excel
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-white/50 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Date</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Professor</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Module</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Group</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Sessions</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Duration</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="prof-sessions-detail" class="p-2"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-student-attendance" class="view-section hidden fade-enter p-10">
+                <div class="flex items-center gap-4 mb-8">
+                    <img src="src/hisLogo.png" alt="Logo" class="w-12 h-12 object-contain">
+                    <h2 class="text-4xl font-bold text-white drop-shadow-sm">Student Attendance Tracking</h2>
+                </div>
+
+                <div class="glass-panel p-6 rounded-3xl mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Department</label>
+                            <select id="student-dept-filter" class="input-pill w-full p-3 rounded-xl">
+                                <option value="">All Departments</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Speciality</label>
+                            <select id="student-spec-filter" class="input-pill w-full p-3 rounded-xl">
+                                <option value="">All Specialities</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Year</label>
+                            <select id="student-year-filter" class="input-pill w-full p-3 rounded-xl">
+                                <option value="">All Years</option>
+                                <option value="L1">L1</option>
+                                <option value="L2">L2</option>
+                                <option value="L3">L3</option>
+                                <option value="M1">M1</option>
+                                <option value="M2">M2</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Group</label>
+                            <select id="student-group-filter" class="input-pill w-full p-3 rounded-xl">
+                                <option value="">All Groups</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Module</label>
+                            <select id="student-module-filter" class="input-pill w-full p-3 rounded-xl">
+                                <option value="">All Modules</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="loadStudentAttendance()" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition w-full">
+                                <i class="fas fa-search mr-2"></i> Apply
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-students">0</div>
+                        <div class="stat-label">Total Students</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-modules">0</div>
+                        <div class="stat-label">Total Modules</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-sessions-count">0</div>
+                        <div class="stat-label">Total Sessions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="avg-attendance">0%</div>
+                        <div class="stat-label">Avg Attendance</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-absences">0</div>
+                        <div class="stat-label">Total Absences</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-1 rounded-3xl overflow-hidden mb-8">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-white/50 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Student</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Group</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Module</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Total Sessions</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Present</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Absent</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Attendance %</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Status</th>
+                                    <th class="p-4 text-xs uppercase text-gray-500 font-bold tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="student-attendance-list" class="p-2"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="student-detail-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div class="glass-panel p-8 rounded-3xl w-full max-w-4xl max-h-[80vh] overflow-y-auto">
+                        <div class="flex justify-between items-start mb-6">
+                            <h3 class="text-2xl font-bold text-gray-800" id="modal-student-name">Student Details</h3>
+                            <button onclick="closeStudentModal()" class="w-8 h-8 rounded-full text-gray-500 hover:bg-gray-200 transition">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div id="modal-content" class="space-y-6"></div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end mt-6">
+                    <button onclick="exportStudentAttendance()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold transition flex items-center shadow-md">
+                        <i class="fas fa-file-excel mr-2"></i> Export to Excel
+                    </button>
+                </div>
+            </div>
+            
+            <div id="view-settings" class="view-section hidden fade-enter">
+                <div class="flex items-center justify-between mb-8">
+                    <h1 class="text-4xl font-bold text-white">Settings</h1>
+                    <span id="user-role-badge" class="px-4 py-2 rounded-full text-sm font-bold bg-indigo-600 text-white"></span>
+                </div>
+                
+                <div class="glass-card max-w-2xl p-8 mb-8">
+                    <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center"><i class="fas fa-user-shield mr-3 text-indigo-500"></i> Profile Security</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-600 mb-1">Name</label>
+                            <input id="profile-name" class="input-pill w-full p-4 rounded-xl" placeholder="Your Name">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-600 mb-1">Email</label>
+                            <input id="profile-email" class="input-pill w-full p-4 rounded-xl text-gray-500" disabled>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-600 mb-1">Phone</label>
+                            <input id="profile-phone" class="input-pill w-full p-4 rounded-xl" placeholder="Phone Number">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-600 mb-1">Address</label>
+                            <input id="profile-address" class="input-pill w-full p-4 rounded-xl" placeholder="Address">
+                        </div>
+                        <div class="border-t pt-4">
+                            <h4 class="font-bold mb-4">Change Password</h4>
+                            <input type="password" id="current-password" class="input-pill w-full p-4 rounded-xl mb-3" placeholder="Current Password">
+                            <input type="password" id="new-password" class="input-pill w-full p-4 rounded-xl mb-3" placeholder="New Password">
+                            <input type="password" id="confirm-password" class="input-pill w-full p-4 rounded-xl mb-3" placeholder="Confirm Password">
+                        </div>
+                        <button onclick="updateProfile()" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold hover:bg-black transition">Update Profile</button>
+                    </div>
+                </div>
+
+                <div id="admin-block" class="glass-card max-w-2xl p-8 hidden">
+                    <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center"><i class="fas fa-users-gear mr-3 text-gray-500"></i> Admin Management</h3>
+                    <div class="flex gap-4 mb-6">
+                        <input id="newAdEmail" class="input-pill flex-1 p-3 rounded-xl" placeholder="Admin Email">
+                        <input id="newAdPass" type="password" class="input-pill flex-1 p-3 rounded-xl" placeholder="Password">
+                        <button onclick="createAdmin()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-sm">Add Admin</button>
+                    </div>
+                    <div id="admin-list" class="space-y-2"></div>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+    <div id="detail-window" class="glass-panel p-8">
+        <div class="flex justify-between items-start mb-6">
+            <h2 id="panel-title" class="text-2xl font-bold text-gray-800">Add Item</h2>
+            <button onclick="closeDetailPanel()" class="w-8 h-8 rounded-full text-gray-500 hover:bg-gray-200 transition"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="panel-content" class="space-y-4 mb-4 overflow-y-auto">
+        </div>
+        <div class="flex space-x-4 mt-4 pt-4 border-t border-white/30">
+            <button onclick="closeDetailPanel()" class="flex-1 py-3 rounded-xl bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">Cancel</button>
+            <button id="panel-confirm-btn" class="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold btn-action shadow-indigo-500/30">Save</button>
+            <button id="panel-delete-btn" class="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold btn-action shadow-red-500/30 hidden">Confirm Deletion</button>
+        </div>
+    </div>
+
+    <div id="custom-alert" class="custom-alert">
+        <div class="flex items-center gap-3">
+            <i id="alert-icon" class="fas fa-info-circle text-indigo-600 text-xl"></i>
+            <p id="alert-message" class="font-medium"></p>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCcnFWLmLlCiW0aJ57HsrYW9iFyA8NuibQ",
+            authDomain: "his-bank.firebaseapp.com",
+            projectId: "his-bank",
+            storageBucket: "his-bank.firebasestorage.app",
+            messagingSenderId: "58642918698",
+            appId: "1:58642918698:web:1d1de10fa827b8f3fbc253"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const SUPER_ADMIN_EMAIL = 'admin@his.edu.dz';
+        const SUPER_ADMIN_PASS = 'admin123';
+
+        let ctx = {
+            filiere: null,
+            spec: null,
+            year: null,
+            group: null
+        };
+        
+        let allReports = [];
+        let currentFilter = 'all';
+        let searchTerm = '';
+        let professorSessions = [];
+        let professorsList = [];
+        let studentAttendanceData = [];
+        let currentUser = null;
+        let currentUserData = null;
+        let groupsList = [];
+        let modulesList = [];
+
+        const $ = id => document.getElementById(id);
+
+        function showAlert(message, type = 'info') {
+            const alert = document.getElementById('custom-alert');
+            const icon = document.getElementById('alert-icon');
+            const msg = document.getElementById('alert-message');
+            
+            msg.textContent = message;
+            alert.className = 'custom-alert ' + type;
+            
+            if (type === 'error') icon.className = 'fas fa-exclamation-circle text-red-600 text-xl';
+            else if (type === 'success') icon.className = 'fas fa-check-circle text-emerald-600 text-xl';
+            else if (type === 'warning') icon.className = 'fas fa-exclamation-triangle text-amber-600 text-xl';
+            else icon.className = 'fas fa-info-circle text-indigo-600 text-xl';
+            
+            alert.classList.add('show');
+            setTimeout(() => alert.classList.remove('show'), 3000);
+        }
+
+        function nav(id) {
+            document.querySelectorAll('.view-section').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('fade-enter'); 
+            });
+            const target = $(id);
+            target.classList.remove('hidden');
+            void target.offsetWidth;
+            target.classList.add('fade-enter');
+
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            if(id.includes('home')) document.querySelector('button[onclick="nav(\'view-home\')"]').classList.add('active');
+            if(id.includes('settings')) document.querySelector('button[onclick="nav(\'view-settings\')"]').classList.add('active');
+            if(id.includes('reports')) document.querySelector('button[onclick="nav(\'view-reports\')"]').classList.add('active');
+            if(id.includes('prof-attendance')) document.querySelector('button[onclick="nav(\'view-prof-attendance\')"]').classList.add('active');
+            if(id.includes('student-attendance')) document.querySelector('button[onclick="nav(\'view-student-attendance\')"]').classList.add('active');
+
+            closeDetailPanel();
+            
+            if (id === 'view-reports') loadAttendanceReports();
+            else if (id === 'view-prof-attendance') {
+                loadProfessorFilters();
+                loadProfessorAttendance();
+            }
+            else if (id === 'view-student-attendance') {
+                loadStudentAttendanceFilters();
+                loadStudentAttendance();
+            }
+        }
+        
+        async function loadProfessorFilters() {
+            try {
+                const profSnap = await db.collection('professors').get();
+                const profFilter = document.getElementById('prof-filter');
+                const currentSelection = profFilter.value;
+                
+                profFilter.innerHTML = '<option value="all">All Professors</option>';
+                professorsList = [];
+                
+                profSnap.forEach(doc => {
+                    professorsList.push({ id: doc.id, ...doc.data() });
+                    profFilter.innerHTML += `<option value="${doc.id}">${doc.data().name}</option>`;
+                });
+                
+                if(currentSelection && [...profFilter.options].some(o => o.value === currentSelection)) {
+                    profFilter.value = currentSelection;
+                }
+            } catch (error) {
+                console.error('Error loading professor filters:', error);
+            }
+        }
+
+        function updateHeaderBtn(text, onClick) {
+            const header = document.querySelector('#view-list .flex');
+            const oldBtn = header.querySelector('.dynamic-add-btn');
+            if(oldBtn) oldBtn.remove();
+
+            if(text && onClick) {
+                const btn = document.createElement('button');
+                btn.className = "dynamic-add-btn bg-white text-indigo-600 px-6 py-3 rounded-xl font-bold shadow hover:shadow-lg transition";
+                btn.innerHTML = `<i class="fas fa-plus mr-2"></i> ${text}`;
+                btn.onclick = onClick;
+                header.appendChild(btn);
+            }
+        }
+
+        function setupBack(fn) {
+            $('back-btn').onclick = fn;
+        }
+
+        function openDetailPanel(title, html, confirmFn, isDelete=false, editData=null) {
+            $('panel-title').innerText = title;
+            $('panel-content').innerHTML = html;
+            const cfmBtn = $('panel-confirm-btn');
+            const delBtn = $('panel-delete-btn');
+
+            cfmBtn.classList.toggle('hidden', isDelete);
+            delBtn.classList.toggle('hidden', !isDelete);
+
+            if(isDelete) {
+                delBtn.onclick = confirmFn;
+                delBtn.innerText = "Confirm Deletion";
+            } else {
+                cfmBtn.onclick = confirmFn;
+                cfmBtn.innerText = editData ? "Update" : "Save";
+            }
+
+            $('detail-window').classList.add('active');
+            
+            if (editData) {
+                setTimeout(() => {
+                    for (let key in editData) {
+                        const input = document.getElementById(`edit-${key}`);
+                        if (input) {
+                            if (input.tagName === 'SELECT') {
+                                Array.from(input.options).forEach(option => {
+                                    if (option.value == editData[key]) {
+                                        option.selected = true;
+                                    }
+                                });
+                            } else {
+                                input.value = editData[key];
+                            }
+                        }
+                    }
+                }, 100);
+            }
+        }
+
+        function closeDetailPanel() {
+            $('detail-window').classList.remove('active');
+        }
+
+        function renderCard({ title, subtitle, icon, color, onClick, onEdit, onDelete, id, data }) {
+            const el = document.createElement('div');
+            el.className = "glass-card p-6 flex flex-col justify-between relative";
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = "flex items-start";
+            contentDiv.innerHTML = `
+                <div class="w-10 h-10 bg-${color}-50 text-${color}-600 rounded-lg flex items-center justify-center text-xl mr-4 shadow-sm">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-xl font-bold text-gray-800">${title}</h3>
+                    <p class="text-gray-500 text-sm">${subtitle}</p>
+                </div>
+            `;
+            el.appendChild(contentDiv);
+            
+            if (onEdit || onDelete) {
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = "mt-4 flex justify-end space-x-2";
+                
+                if (onEdit) {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = "edit-btn text-gray-400 hover:text-indigo-600";
+                    editBtn.innerHTML = '<i class="fas fa-pen mr-1"></i> Edit';
+                    editBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openEdit(onEdit.collection, id, data, onEdit.refreshFn);
+                    };
+                    actionsDiv.appendChild(editBtn);
+                }
+                
+                if (onDelete) {
+                    const delBtn = document.createElement('button');
+                    delBtn.className = "del-btn text-gray-400 hover:text-red-600";
+                    delBtn.innerHTML = '<i class="fas fa-trash mr-1"></i> Delete';
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if (onDelete.collection === 'professors' && currentUserData.role !== 'superadmin') {
+                            showAlert('Only Super Admin can delete professors', 'warning');
+                            return;
+                        }
+                        openDelete(onDelete.collection, id, onDelete.refreshFn);
+                    };
+                    actionsDiv.appendChild(delBtn);
+                }
+                
+                el.appendChild(actionsDiv);
+            }
+
+            if(onClick) {
+                el.classList.add('cursor-pointer');
+                el.onclick = (e) => {
+                    if(!e.target.closest('button')) onClick();
+                }
+            }
+            
+            $('items-grid').appendChild(el);
+        }
+
+        async function openAdd(type) {
+            let title, html, fn;
+            
+            if (type === 'filiere') {
+                title = "Add Department";
+                html = `<div class="bg-white/50 p-4 rounded-xl border border-white">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Department Name</label>
+                    <input id="inp-name" class="input-pill w-full p-3 rounded-lg" placeholder="Enter department name" required>
+                </div>`;
+                fn = async () => {
+                    const n = $('inp-name').value;
+                    if(!n) return;
+                    try {
+                        await db.collection('filieres').add({ name: n });
+                        loadFilieres();
+                        closeDetailPanel();
+                        showAlert('Department added successfully!', 'success');
+                    } catch(e) { 
+                        showAlert('Error adding department: ' + e.message, 'error');
+                    }
+                };
+            } else if (type === 'speciality') {
+                title = "Add Speciality";
+                html = `<div class="bg-white/50 p-4 rounded-xl border border-white">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Speciality Name</label>
+                    <input id="inp-name" class="input-pill w-full p-3 rounded-lg" placeholder="Enter speciality name" required>
+                </div>`;
+                fn = async () => {
+                    const n = $('inp-name').value;
+                    if(!n || !ctx.filiere) return;
+                    try {
+                        await db.collection('specialities').add({ name: n, filiereId: ctx.filiere.id });
+                        loadSpecs();
+                        closeDetailPanel();
+                        showAlert('Speciality added successfully!', 'success');
+                    } catch(e) { 
+                        showAlert('Error adding speciality: ' + e.message, 'error');
+                    }
+                };
+            } else if (type === 'prof') {
+                if (currentUserData.role !== 'superadmin') {
+                    showAlert('Only Super Admin can add professors', 'warning');
+                    return;
+                }
+                title = "Add Professor";
+                html = `
+                    <div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Full Name</label>
+                        <input id="inp-name" class="input-pill w-full p-3 rounded-lg" placeholder="Professor name" required>
+                    </div>
+                    <div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Email</label>
+                        <input id="inp-email" type="email" class="input-pill w-full p-3 rounded-lg" placeholder="Email address" required>
+                    </div>
+                    <div class="bg-white/50 p-4 rounded-xl border border-white">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Password</label>
+                        <input id="inp-pass" type="password" class="input-pill w-full p-3 rounded-lg" placeholder="Password" required>
+                    </div>`;
+                fn = async () => {
+                    const n = $('inp-name').value, e = $('inp-email').value, p = $('inp-pass').value;
+                    if(!n||!e||!p) return;
+                    try {
+                        const sa = firebase.initializeApp(firebaseConfig, 'secondaryAuth');
+                        const uc = await sa.auth().createUserWithEmailAndPassword(e, p);
+                        await db.collection('professors').doc(uc.user.uid).set({name:n, email:e});
+                        sa.auth().signOut();
+                        sa.delete();
+                        loadProfs();
+                        closeDetailPanel();
+                        showAlert('Professor added successfully!', 'success');
+                    } catch(e){ 
+                        showAlert('Error creating prof: ' + e.message, 'error');
+                    }
+                };
+            } else if (type === 'group') {
+                title = "Add Group";
+                html = `<div class="bg-white/50 p-4 rounded-xl border border-white">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Group Name</label>
+                    <input id="inp-name" class="input-pill w-full p-3 rounded-lg" placeholder="Enter group name" required>
+                </div>`;
+                fn = async () => {
+                    const n = $('inp-name').value;
+                    if(!n || !ctx.spec || !ctx.year) return;
+                    try {
+                        await db.collection('groups').add({ name: n, specId: ctx.spec.id, yearId: ctx.year });
+                        loadYearDetails();
+                        closeDetailPanel();
+                        showAlert('Group added successfully!', 'success');
+                    } catch(e) { 
+                        showAlert('Error adding group: ' + e.message, 'error');
+                    }
+                };
+            } else if (type === 'module') {
+                title = "Add Module & Schedule";
+                
+                const profSnap = await db.collection('professors').get();
+                let profOptions = `<option value="">Select Professor...</option>`;
+                profSnap.forEach(p => {
+                    profOptions += `<option value="${p.id}">${p.data().name}</option>`;
+                });
+
+                const grpSnap = await db.collection('groups')
+                    .where('specId', '==', ctx.spec.id)
+                    .where('yearId', '==', ctx.year).get();
+                
+                let groupOptions = `<option value="all">All Groups in ${ctx.year}</option>`;
+                grpSnap.forEach(g => {
+                    groupOptions += `<option value="${g.id}">${g.data().name}</option>`;
+                });
+
+                html = `
+                    <div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Module Name</label>
+                        <input id="inp-name" class="input-pill w-full p-3 rounded-lg" placeholder="Enter module name" required>
+                    </div>
+                    
+                    <div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Assign Professor</label>
+                        <select id="inp-prof" class="input-pill w-full p-3 rounded-lg cursor-pointer" required>
+                            ${profOptions}
+                        </select>
+                    </div>
+                    
+                    <div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Target Group</label>
+                        <select id="inp-target-group" class="input-pill w-full p-3 rounded-lg cursor-pointer" required>
+                            ${groupOptions}
+                        </select>
+                    </div>
+                    
+                    <div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Day of Week</label>
+                        <select id="inp-day" class="input-pill w-full p-3 rounded-lg cursor-pointer" required>
+                            <option value="Sunday">Sunday</option>
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-3">
+                        <div class="bg-white/50 p-4 rounded-xl border border-white">
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Start Time</label>
+                            <input id="inp-time" type="time" class="input-pill w-full p-3 rounded-lg" required>
+                        </div>
+                        
+                        <div class="bg-white/50 p-4 rounded-xl border border-white">
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Sessions per Week</label>
+                            <select id="inp-sessions" class="input-pill w-full p-3 rounded-lg cursor-pointer" required>
+                                <option value="1">1 Session</option>
+                                <option value="2">2 Sessions</option>
+                                <option value="3">3 Sessions</option>
+                                <option value="4">4 Sessions</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white/50 p-4 rounded-xl border border-white">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Semester Duration (weeks)</label>
+                        <input id="inp-weeks" type="number" min="1" max="16" value="12" class="input-pill w-full p-3 rounded-lg">
+                        <p class="text-xs text-gray-400 mt-1">Number of weeks this module runs in the semester</p>
+                    </div>
+                `;
+
+                fn = async () => {
+                    const n = document.getElementById('inp-name')?.value;
+                    const profId = document.getElementById('inp-prof')?.value;
+                    const profSelect = document.getElementById('inp-prof');
+                    const profName = profSelect?.options[profSelect.selectedIndex]?.text || '';
+                    const targetGroupId = document.getElementById('inp-target-group')?.value;
+                    const day = document.getElementById('inp-day')?.value;
+                    const startTime = document.getElementById('inp-time')?.value;
+                    const sessionCount = parseInt(document.getElementById('inp-sessions')?.value) || 1;
+                    const semesterWeeks = parseInt(document.getElementById('inp-weeks')?.value) || 12;
+
+                    if(!n || !profId || !startTime) {
+                        showAlert("Please fill all required fields.", 'warning');
+                        return;
+                    }
+                    
+                    try {
+                        const payload = { 
+                            name: n, 
+                            specId: ctx.spec.id, 
+                            yearId: ctx.year,
+                            profId: profId,
+                            profName: profName,
+                            semesterWeeks: semesterWeeks,
+                            schedule: {
+                                day: day,
+                                startTime: startTime,
+                                sessionCount: sessionCount
+                            }
+                        };
+                        
+                        if(targetGroupId && targetGroupId !== 'all') {
+                            payload.targetGroupId = targetGroupId;
+                        }
+
+                        await db.collection('modules').add(payload);
+                        loadYearDetails();
+                        closeDetailPanel();
+                        showAlert('Module added successfully!', 'success');
+                    } catch(e) { 
+                        showAlert('Error adding module: ' + e.message, 'error');
+                    }
+                };
+            } else if (type === 'student') {
+                title = "Enroll Student";
+                html = `
+                    <div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Matricule (ID)</label>
+                        <input id="inp-mat" class="input-pill w-full p-3 rounded-lg" placeholder="Student ID" required>
+                    </div>
+                    <div class="bg-white/50 p-4 rounded-xl border border-white">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Full Name</label>
+                        <input id="inp-name" class="input-pill w-full p-3 rounded-lg" placeholder="Student name" required>
+                    </div>`;
+                fn = async () => {
+                    const m=$('inp-mat').value, n=$('inp-name').value;
+                    if(!m||!n||!ctx.group) return;
+                    try {
+                        await db.collection('students').doc(m).set({ 
+                            name:n, 
+                            groupId:ctx.group.id, 
+                            filiereId:ctx.filiere.id, 
+                            specId:ctx.spec.id, 
+                            yearId:ctx.year 
+                        });
+                        loadStudents();
+                        closeDetailPanel();
+                        showAlert('Student enrolled successfully!', 'success');
+                    } catch(e){ 
+                        showAlert('Error enrolling student: ' + e.message, 'error');
+                    }
+                };
+            }
+            openDetailPanel(title, html, fn);
+        }
+        
+        function openEdit(col, id, data, refreshFn) {
+            const fields = getEditFields(col, data);
+            
+            let inputs = '';
+            for (const f of fields) {
+                if (f.type === 'select') {
+                    let options = '';
+                    if (f.key === 'profId') {
+                        options = '<option value="">Select Professor...</option>';
+                        professorsList.forEach(p => {
+                            const selected = p.id === data.profId ? 'selected' : '';
+                            options += `<option value="${p.id}" ${selected}>${p.name}</option>`;
+                        });
+                    } else if (f.key === 'targetGroupId') {
+                        options = '<option value="all">All Groups</option>';
+                        groupsList.forEach(g => {
+                            const selected = g.id === data.targetGroupId ? 'selected' : '';
+                            options += `<option value="${g.id}" ${selected}>${g.name}</option>`;
+                        });
+                    } else if (f.key === 'day') {
+                        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                        days.forEach(day => {
+                            const selected = day === (data.schedule?.day || '') ? 'selected' : '';
+                            options += `<option value="${day}" ${selected}>${day}</option>`;
+                        });
+                    } else if (f.key === 'sessionCount') {
+                        for (let i = 1; i <= 4; i++) {
+                            const selected = i === (data.schedule?.sessionCount || 1) ? 'selected' : '';
+                            options += `<option value="${i}" ${selected}>${i} Session${i > 1 ? 's' : ''}</option>`;
+                        }
+                    }
+                    
+                    inputs += `<div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">${f.label}</label>
+                        <select id="edit-${f.key}" class="input-pill w-full p-3 rounded-lg" ${f.required ? 'required' : ''}>${options}</select>
+                    </div>`;
+                } else if (f.type === 'time') {
+                    const value = data.schedule?.startTime || '';
+                    inputs += `<div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">${f.label}</label>
+                        <input id="edit-${f.key}" type="time" value="${value}" class="input-pill w-full p-3 rounded-lg" ${f.required ? 'required' : ''}>
+                    </div>`;
+                } else if (f.type === 'number') {
+                    let value = '';
+                    if (f.key === 'semesterWeeks') {
+                        value = data.semesterWeeks || 12;
+                    } else {
+                        value = data[f.key] || '';
+                    }
+                    inputs += `<div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">${f.label}</label>
+                        <input id="edit-${f.key}" type="number" value="${value}" class="input-pill w-full p-3 rounded-lg" ${f.required ? 'required' : ''}>
+                    </div>`;
+                } else if (f.type === 'password') {
+                    inputs += `<div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">${f.label}</label>
+                        <div class="password-input-container">
+                            <input id="edit-${f.key}" type="password" value="" class="input-pill w-full p-3 rounded-lg" placeholder="Leave blank to keep current password">
+                            <span class="password-toggle" onclick="togglePasswordVisibility('edit-${f.key}')">
+                                <i class="fas fa-eye"></i>
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Leave blank to keep current password</p>
+                    </div>`;
+                } else {
+                    const value = data[f.key] || '';
+                    inputs += `<div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
+                        <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">${f.label}</label>
+                        <input id="edit-${f.key}" value="${value}" class="input-pill w-full p-3 rounded-lg" ${f.type === 'email' ? 'type="email"' : ''} ${f.required ? 'required' : ''}>
+                    </div>`;
+                }
+            }
+            
+            const fn = async () => {
+                const newData = {};
+                let passwordChanged = false;
+                let newPassword = '';
+                
+                for (const f of fields) {
+                    const input = document.getElementById(`edit-${f.key}`);
+                    if (input) {
+                        if (f.key === 'profId') {
+                            newData.profId = input.value;
+                            const prof = professorsList.find(p => p.id === input.value);
+                            newData.profName = prof ? prof.name : '';
+                        } else if (f.key === 'targetGroupId') {
+                            newData.targetGroupId = input.value === 'all' ? null : input.value;
+                        } else if (f.key === 'day' || f.key === 'startTime' || f.key === 'sessionCount') {
+                            if (!newData.schedule) newData.schedule = data.schedule || {};
+                            if (f.key === 'sessionCount') {
+                                newData.schedule.sessionCount = parseInt(input.value);
+                            } else {
+                                newData.schedule[f.key] = input.value;
+                            }
+                        } else if (f.key === 'password') {
+                            if (input.value) {
+                                passwordChanged = true;
+                                newPassword = input.value;
+                            }
+                        } else if (f.key === 'semesterWeeks') {
+                            newData.semesterWeeks = parseInt(input.value);
+                        } else {
+                            newData[f.key] = f.type === 'number' ? parseFloat(input.value) : input.value;
+                        }
+                    }
+                }
+                
+                try {
+                    // Update Firestore document
+                    await db.collection(col).doc(id).update(newData);
+                    
+                    // If this is a professor and password was changed
+                    if (col === 'professors' && passwordChanged) {
+                        try {
+                            await auth.sendPasswordResetEmail(data.email);
+                            showAlert('Password reset email sent to professor. They can set new password.', 'success');
+                        } catch (authError) {
+                            console.error('Error sending password reset:', authError);
+                            showAlert('Professor data updated but password reset email could not be sent.', 'warning');
+                        }
+                    }
+                    
+                    refreshFn();
+                    closeDetailPanel();
+                    showAlert('Item updated successfully!', 'success');
+                } catch(e) { 
+                    showAlert('Error updating: ' + e.message, 'error');
+                }
+            };
+            
+            openDetailPanel("Edit Item", inputs, fn, false, data);
+        }
+
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const icon = input.nextElementSibling?.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                if (icon) icon.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                if (icon) icon.className = 'fas fa-eye';
+            }
+        }
+
+        function openDelete(col, id, refreshFn) {
+            const html = `<div class="bg-red-50 p-6 rounded-xl border border-red-100 text-center">
+                <i class="fas fa-triangle-exclamation text-4xl text-red-400 mb-3"></i>
+                <p class="font-bold text-red-700">Are you sure you want to permanently delete this item? This action cannot be undone.</p>
+            </div>`;
+            const fn = async () => {
+                try {
+                    await db.collection(col).doc(id).delete();
+                    refreshFn();
+                    closeDetailPanel();
+                    showAlert('Item deleted successfully!', 'success');
+                } catch(e) {
+                    showAlert('Error deleting item: ' + e.message, 'error');
+                }
+            };
+            openDetailPanel("Confirm Deletion", html, fn, true);
+        }
+
+        function getEditFields(collection, data) {
+            switch(collection) {
+                case 'filieres':
+                    return [{key:'name', label:'Department Name', required: true}];
+                case 'specialities':
+                    return [{key:'name', label:'Speciality Name', required: true}];
+                case 'professors':
+                    return [
+                        {key:'name', label:'Full Name', required: true},
+                        {key:'email', label:'Email', required: true, type:'email'},
+                        {key:'password', label:'New Password', type:'password', required: false}
+                    ];
+                case 'groups':
+                    return [{key:'name', label:'Group Name', required: true}];
+                case 'modules':
+                    return [
+                        {key:'name', label:'Module Name', required: true},
+                        {key:'profId', label:'Professor', type:'select', required: true},
+                        {key:'targetGroupId', label:'Target Group', type:'select'},
+                        {key:'day', label:'Day of Week', type:'select', required: true},
+                        {key:'startTime', label:'Start Time', type:'time', required: true},
+                        {key:'sessionCount', label:'Sessions per Week', type:'select', required: true},
+                        {key:'semesterWeeks', label:'Semester Weeks', type:'number', required: true}
+                    ];
+                case 'students':
+                    return [
+                        {key:'id', label:'Matricule (ID)', required: true},
+                        {key:'name', label:'Full Name', required: true}
+                    ];
+                default:
+                    return [{key:'name', label:'Name', required: true}];
+            }
+        }
+
+        async function loadFilieres() {
+            nav('view-list');
+            $('page-title').innerText = "Departments (Filieres)";
+            $('page-subtitle').innerText = "Manage university structure and hierarchy.";
+            $('items-grid').innerHTML = ""; 
+            updateHeaderBtn('Add Department', () => openAdd('filiere'));
+            setupBack(() => nav('view-home'));
+
+            const snap = await db.collection('filieres').get();
+            snap.docs.forEach(d => {
+                const data = d.data();
+                renderCard({
+                    id: d.id,
+                    data: data,
+                    title: data.name,
+                    subtitle: "Manage Specialities",
+                    icon: "fa-layer-group",
+                    color: "blue",
+                    onClick: () => {
+                        ctx.filiere = { id: d.id, name: data.name };
+                        loadSpecs();
+                    },
+                    onEdit: { collection: 'filieres', refreshFn: loadFilieres },
+                    onDelete: { collection: 'filieres', refreshFn: loadFilieres }
+                });
+            });
+        }
+
+        async function loadSpecs() {
+            nav('view-list');
+            $('page-title').innerText = "Specialities";
+            $('page-subtitle').innerText = `${ctx.filiere.name} > Specialities`;
+            $('items-grid').innerHTML = ""; 
+            updateHeaderBtn('Add Speciality', () => openAdd('speciality'));
+            setupBack(() => loadFilieres());
+
+            const snap = await db.collection('specialities').where('filiereId', '==', ctx.filiere.id).get();
+            snap.docs.forEach(d => {
+                const data = d.data();
+                renderCard({
+                    id: d.id,
+                    data: data,
+                    title: data.name,
+                    subtitle: "Manage Years (L1, M2...)",
+                    icon: "fa-graduation-cap",
+                    color: "pink",
+                    onClick: () => {
+                        ctx.spec = { id: d.id, name: data.name };
+                        loadYears();
+                    },
+                    onEdit: { collection: 'specialities', refreshFn: loadSpecs },
+                    onDelete: { collection: 'specialities', refreshFn: loadSpecs }
+                });
+            });
+        }
+        
+        function loadYears() {
+            nav('view-list');
+            $('page-title').innerText = "Years";
+            $('page-subtitle').innerText = `${ctx.filiere.name} > ${ctx.spec.name}`;
+            $('items-grid').innerHTML = ""; 
+            updateHeaderBtn(null, null);
+            setupBack(() => loadSpecs());
+
+            ['L1','L2','L3','M1','M2'].forEach(y => {
+                renderCard({
+                    title: y,
+                    subtitle: "Groups & Modules",
+                    icon: "fa-calendar-days",
+                    color: "emerald",
+                    onClick: () => {
+                        ctx.year = y;
+                        loadYearDetails();
+                    }
+                });
+            });
+        }
+        
+        async function loadYearDetails() {
+            nav('view-year-details');
+            document.getElementById('year-title').innerText = `${ctx.spec.name} - ${ctx.year}`;
+            
+            const gGrid = document.getElementById('groups-grid');
+            gGrid.innerHTML = '';
+            const mGrid = document.getElementById('modules-grid');
+            mGrid.innerHTML = '';
+            
+            const gSnap = await db.collection('groups')
+                .where('specId', '==', ctx.spec.id)
+                .where('yearId', '==', ctx.year)
+                .get();
+            
+            groupsList = [];
+            if (gSnap.empty) {
+                gGrid.innerHTML = '<div class="text-center p-6 text-gray-500">No groups added yet. Click "Add Group" to create one.</div>';
+            } else {
+                gSnap.docs.forEach(d => {
+                    const data = d.data();
+                    groupsList.push({ id: d.id, name: data.name });
+                    const el = document.createElement('div');
+                    el.className = "floating-row p-4 flex justify-between items-center cursor-pointer";
+                    
+                    const leftDiv = document.createElement('div');
+                    leftDiv.className = "flex items-center";
+                    leftDiv.innerHTML = '<span class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3"><i class="fas fa-users"></i></span>';
+                    
+                    const titleSpan = document.createElement('span');
+                    titleSpan.className = "font-bold text-gray-700";
+                    titleSpan.textContent = data.name;
+                    leftDiv.appendChild(titleSpan);
+                    
+                    const rightDiv = document.createElement('div');
+                    
+                    const editBtn = document.createElement('button');
+                    editBtn.className = "text-indigo-400 hover:text-indigo-600 mr-2";
+                    editBtn.innerHTML = '<i class="fas fa-pen"></i>';
+                    editBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openEdit('groups', d.id, data, loadYearDetails);
+                    };
+                    
+                    const delBtn = document.createElement('button');
+                    delBtn.className = "text-red-400 hover:text-red-600";
+                    delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openDelete('groups', d.id, loadYearDetails);
+                    };
+                    
+                    rightDiv.appendChild(editBtn);
+                    rightDiv.appendChild(delBtn);
+                    
+                    el.appendChild(leftDiv);
+                    el.appendChild(rightDiv);
+                    
+                    el.onclick = (e) => { 
+                        if(!e.target.closest('button')) { 
+                            ctx.group = { id: d.id, name: data.name }; 
+                            loadStudents(); 
+                        }
+                    };
+                    gGrid.appendChild(el);
+                });
+            }
+            
+            const mSnap = await db.collection('modules')
+                .where('specId', '==', ctx.spec.id)
+                .where('yearId', '==', ctx.year)
+                .get();
+            
+            modulesList = [];
+            if (mSnap.empty) {
+                mGrid.innerHTML = '<div class="text-center p-6 text-gray-500">No modules added yet. Click "Add Module" to create one.</div>';
+            } else {
+                mSnap.docs.forEach(d => {
+                    const data = d.data();
+                    modulesList.push({ id: d.id, ...data });
+                    const el = document.createElement('div');
+                    el.className = "floating-row p-4 flex justify-between items-center";
+                    
+                    let metaInfo = `<span class="text-xs text-gray-500 block"><i class="fas fa-chalkboard-user mr-1"></i> ${data.profName || 'No Prof'}</span>`;
+                    if(data.schedule) {
+                        metaInfo += `<span class="text-xs text-indigo-500 font-bold block"><i class="fas fa-clock mr-1"></i> ${data.schedule.day} @ ${data.schedule.startTime} (${data.schedule.sessionCount} sessions/week)</span>`;
+                    }
+                    if(data.semesterWeeks) {
+                        metaInfo += `<span class="text-xs text-emerald-500 font-bold block"><i class="fas fa-calendar-week mr-1"></i> ${data.semesterWeeks} weeks/semester</span>`;
+                    }
+                    if(data.targetGroupId) {
+                        metaInfo += `<span class="text-xs text-pink-500 font-bold block"><i class="fas fa-lock mr-1"></i> Specific Group</span>`;
+                    }
+
+                    const leftDiv = document.createElement('div');
+                    leftDiv.className = "flex items-center";
+                    leftDiv.innerHTML = `
+                        <span class="w-10 h-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center mr-3">
+                            <i class="fas fa-book"></i>
+                        </span>
+                        <div>
+                            <span class="font-bold text-gray-700 block">${data.name}</span>
+                            ${metaInfo}
+                        </div>
+                    `;
+                    
+                    const rightDiv = document.createElement('div');
+                    
+                    const editBtn = document.createElement('button');
+                    editBtn.className = "text-pink-400 hover:text-pink-600 mr-2";
+                    editBtn.innerHTML = '<i class="fas fa-pen"></i>';
+                    editBtn.onclick = () => openEdit('modules', d.id, {
+                        ...data,
+                        day: data.schedule?.day || '',
+                        startTime: data.schedule?.startTime || '',
+                        sessionCount: data.schedule?.sessionCount || 1,
+                        targetGroupId: data.targetGroupId || 'all',
+                        semesterWeeks: data.semesterWeeks || 12
+                    }, loadYearDetails);
+                    
+                    const delBtn = document.createElement('button');
+                    delBtn.className = "text-red-400 hover:text-red-600";
+                    delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    delBtn.onclick = () => openDelete('modules', d.id, loadYearDetails);
+                    
+                    rightDiv.appendChild(editBtn);
+                    rightDiv.appendChild(delBtn);
+                    
+                    el.appendChild(leftDiv);
+                    el.appendChild(rightDiv);
+                    
+                    mGrid.appendChild(el);
+                });
+            }
+        }
+        
+        async function loadStudents() {
+            nav('view-students');
+            $('group-title').innerText = ctx.group.name;
+            const list = $('student-list');
+            list.innerHTML = '';
+            
+            const snap = await db.collection('students').where('groupId','==',ctx.group.id).get();
+            
+            if(snap.empty) {
+                list.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-gray-500 font-medium">No students enrolled in this group.</td></tr>`;
+                return;
+            }
+
+            snap.docs.forEach(d => {
+                const data = d.data();
+                const tr = document.createElement('tr');
+                tr.className = "floating-row";
+                
+                const td1 = document.createElement('td');
+                td1.className = "p-4 text-sm font-medium text-gray-700";
+                td1.textContent = d.id;
+                
+                const td2 = document.createElement('td');
+                td2.className = "p-4 text-sm font-bold text-gray-900";
+                td2.textContent = data.name;
+                
+                const td3 = document.createElement('td');
+                td3.className = "p-4 text-right";
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = "text-indigo-400 hover:text-indigo-600 mr-3";
+                editBtn.innerHTML = '<i class="fas fa-pen"></i> Edit';
+                editBtn.onclick = () => openEdit('students', d.id, {id: d.id, name: data.name}, loadStudents);
+                
+                const delBtn = document.createElement('button');
+                delBtn.className = "text-red-400 hover:text-red-600";
+                delBtn.innerHTML = '<i class="fas fa-trash"></i> Delete';
+                delBtn.onclick = () => openDelete('students', d.id, loadStudents);
+                
+                td3.appendChild(editBtn);
+                td3.appendChild(delBtn);
+                
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+                tr.appendChild(td3);
+                
+                list.appendChild(tr);
+            });
+        }
+        
+        async function loadProfs() {
+            nav('view-list');
+            $('page-title').innerText = "Professors";
+            $('page-subtitle').innerText = "Manage faculty accounts and profiles.";
+            $('items-grid').innerHTML = ""; 
+            
+            if (currentUserData && currentUserData.role === 'superadmin') {
+                updateHeaderBtn('Add Professor', () => openAdd('prof'));
+            } else {
+                const header = document.querySelector('#view-list .flex');
+                const oldBtn = header?.querySelector('.dynamic-add-btn');
+                if (oldBtn) oldBtn.remove();
+            }
+            
+            setupBack(() => nav('view-home'));
+
+            const snap = await db.collection('professors').get();
+            professorsList = [];
+            snap.docs.forEach(d => {
+                const data = d.data();
+                professorsList.push({ id: d.id, ...data });
+                renderCard({
+                    id: d.id,
+                    data: data,
+                    title: data.name,
+                    subtitle: data.email,
+                    icon: "fa-user-tie",
+                    color: "purple",
+                    onClick: null,
+                    onEdit: { collection: 'professors', refreshFn: loadProfs },
+                    onDelete: currentUserData && currentUserData.role === 'superadmin' ? { collection: 'professors', refreshFn: loadProfs } : null
+                });
+            });
+            
+            const profFilter = document.getElementById('prof-filter');
+            if (profFilter) {
+                profFilter.innerHTML = '<option value="all">All Professors</option>' + 
+                    professorsList.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            }
+        }
+
+        async function loadStudentAttendanceFilters() {
+            try {
+                const deptSnap = await db.collection('filieres').get();
+                const deptFilter = document.getElementById('student-dept-filter');
+                deptFilter.innerHTML = '<option value="">All Departments</option>';
+                
+                // Store departments for filter
+                const departments = [];
+                deptSnap.forEach(doc => {
+                    departments.push({ id: doc.id, name: doc.data().name });
+                    deptFilter.innerHTML += `<option value="${doc.id}">${doc.data().name}</option>`;
+                });
+
+                // Load all specialities initially
+                const allSpecSnap = await db.collection('specialities').get();
+                const specFilter = document.getElementById('student-spec-filter');
+                specFilter.innerHTML = '<option value="">All Specialities</option>';
+                allSpecSnap.forEach(doc => {
+                    specFilter.innerHTML += `<option value="${doc.id}" data-filiere="${doc.data().filiereId}">${doc.data().name}</option>`;
+                });
+
+                // Add change event to department filter
+                deptFilter.addEventListener('change', function() {
+                    const selectedDept = this.value;
+                    const specOptions = specFilter.querySelectorAll('option');
+                    
+                    specOptions.forEach(option => {
+                        if (option.value === '') return; // Skip the "All Specialities" option
+                        
+                        const optionFiliere = option.getAttribute('data-filiere');
+                        if (!selectedDept || optionFiliere === selectedDept) {
+                            option.style.display = '';
+                        } else {
+                            option.style.display = 'none';
+                        }
+                    });
+                    
+                    // Reset speciality selection
+                    specFilter.value = '';
+                });
+
+                const groupSnap = await db.collection('groups').get();
+                const groupFilter = document.getElementById('student-group-filter');
+                groupFilter.innerHTML = '<option value="">All Groups</option>';
+                groupSnap.forEach(doc => {
+                    groupFilter.innerHTML += `<option value="${doc.id}">${doc.data().name}</option>`;
+                });
+
+                const moduleSnap = await db.collection('modules').get();
+                const moduleFilter = document.getElementById('student-module-filter');
+                moduleFilter.innerHTML = '<option value="">All Modules</option>';
+                moduleSnap.forEach(doc => {
+                    moduleFilter.innerHTML += `<option value="${doc.id}">${doc.data().name}</option>`;
+                });
+
+            } catch (error) {
+                console.error('Error loading filters:', error);
+            }
+        }
+
+        async function loadStudentAttendance() {
+            const tbody = document.getElementById('student-attendance-list');
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center p-8 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i> Loading student attendance data...</td></tr>';
+            
+            try {
+                const deptFilter = document.getElementById('student-dept-filter').value;
+                const specFilter = document.getElementById('student-spec-filter').value;
+                const yearFilter = document.getElementById('student-year-filter').value;
+                const groupFilter = document.getElementById('student-group-filter').value;
+                const moduleFilter = document.getElementById('student-module-filter').value;
+                
+                const reportsSnap = await db.collection('attendance_reports')
+                    .where('status', '==', 'finalized')
+                    .get();
+                
+                const studentsSnap = await db.collection('students').get();
+                const students = [];
+                studentsSnap.forEach(doc => {
+                    students.push({ id: doc.id, ...doc.data() });
+                });
+                
+                const modulesSnap = await db.collection('modules').get();
+                const modules = [];
+                modulesSnap.forEach(doc => {
+                    modules.push({ id: doc.id, ...doc.data() });
+                });
+                
+                let attendanceMap = new Map();
+                let totalStudentsSet = new Set();
+                let totalModulesSet = new Set();
+                let totalSessionsCount = 0;
+                let totalPresentCount = 0;
+                
+                reportsSnap.forEach(doc => {
+                    const report = doc.data();
+                    if (!report.students) return;
+                    
+                    const moduleId = report.moduleId;
+                    const module = modules.find(m => m.id === moduleId);
+                    if (!module) return;
+                    
+                    if (moduleFilter && moduleId !== moduleFilter) return;
+                    
+                    totalModulesSet.add(moduleId);
+                    
+                    const totalSessions = report.totalSessions || 1;
+                    const semesterWeeks = module.semesterWeeks || 12;
+                    const totalExpectedSessions = totalSessions * semesterWeeks;
+                    
+                    report.students.forEach(student => {
+                        const studentData = students.find(s => s.id === student.id);
+                        if (!studentData) return;
+                        
+                        if (deptFilter && studentData.filiereId !== deptFilter) return;
+                        if (specFilter && studentData.specId !== specFilter) return;
+                        if (yearFilter && studentData.yearId !== yearFilter) return;
+                        if (groupFilter && studentData.groupId !== groupFilter) return;
+                        
+                        totalStudentsSet.add(student.id);
+                        
+                        let presentCount = 0;
+                        for(let i=1; i<=totalSessions; i++) {
+                            if (student[`s${i}`] === 'present') presentCount++;
+                        }
+                        
+                        const key = `${student.id}_${moduleId}`;
+                        if (!attendanceMap.has(key)) {
+                            attendanceMap.set(key, {
+                                studentId: student.id,
+                                studentName: studentData.name,
+                                groupId: studentData.groupId,
+                                groupName: '',
+                                moduleId: moduleId,
+                                moduleName: module.name,
+                                totalSessions: totalSessions,
+                                semesterWeeks: semesterWeeks,
+                                expectedTotal: totalExpectedSessions,
+                                present: presentCount,
+                                absent: totalSessions - presentCount
+                            });
+                            
+                            totalSessionsCount += totalSessions;
+                            totalPresentCount += presentCount;
+                        }
+                    });
+                });
+                
+                const groupsSnap = await db.collection('groups').get();
+                const groups = [];
+                groupsSnap.forEach(doc => {
+                    groups.push({ id: doc.id, name: doc.data().name });
+                });
+                
+                studentAttendanceData = Array.from(attendanceMap.values()).map(item => {
+                    const group = groups.find(g => g.id === item.groupId);
+                    return { ...item, groupName: group ? group.name : 'Unknown' };
+                });
+                
+                document.getElementById('total-students').textContent = totalStudentsSet.size;
+                document.getElementById('total-modules').textContent = totalModulesSet.size;
+                document.getElementById('total-sessions-count').textContent = totalSessionsCount;
+                const avgAttendance = totalSessionsCount > 0 ? Math.round((totalPresentCount / totalSessionsCount) * 100) : 0;
+                document.getElementById('avg-attendance').textContent = avgAttendance + '%';
+                document.getElementById('total-absences').textContent = totalSessionsCount - totalPresentCount;
+                
+                if (studentAttendanceData.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center p-8 text-gray-500">No student attendance data found for the selected filters</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = '';
+                studentAttendanceData.forEach(item => {
+                    const attendanceRate = Math.round((item.present / item.expectedTotal) * 100) || 0;
+                    let statusClass = 'status-good';
+                    let statusText = 'Good';
+                    
+                    if (attendanceRate < 75) {
+                        statusClass = 'status-warning';
+                        statusText = 'Warning';
+                    }
+                    if (attendanceRate < 50) {
+                        statusClass = 'status-danger';
+                        statusText = 'Critical';
+                    }
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = "floating-row";
+                    tr.innerHTML = `
+                        <td class="p-4"><div class="font-bold text-gray-800">${item.studentName}</div><div class="text-xs text-gray-400">${item.studentId}</div></td>
+                        <td class="p-4 text-gray-600">${item.groupName}</td>
+                        <td class="p-4 text-gray-600">${item.moduleName}</td>
+                        <td class="p-4 text-gray-700">${item.expectedTotal}</td>
+                        <td class="p-4 text-emerald-600 font-bold">${item.present}</td>
+                        <td class="p-4 text-red-600 font-bold">${item.absent}</td>
+                        <td class="p-4 font-bold ${attendanceRate >= 75 ? 'text-emerald-600' : attendanceRate >= 50 ? 'text-amber-600' : 'text-red-600'}">${attendanceRate}%</td>
+                        <td class="p-4"><span class="${statusClass}">${statusText}</span></td>
+                        <td class="p-4 text-right">
+                            <button onclick="viewStudentDetails('${item.studentId}', '${item.moduleId}')" class="text-indigo-600 hover:text-indigo-800">
+                                <i class="fas fa-eye"></i> Details
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
+            } catch (error) {
+                console.error('Error loading student attendance:', error);
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center p-8 text-red-500">Error loading data: ${error.message}</td></tr>`;
+            }
+        }
+
+        function viewStudentDetails(studentId, moduleId) {
+            const studentData = studentAttendanceData.find(d => d.studentId === studentId && d.moduleId === moduleId);
+            if (!studentData) return;
+            
+            const modal = document.getElementById('student-detail-modal');
+            document.getElementById('modal-student-name').textContent = `${studentData.studentName} - ${studentData.moduleName}`;
+            
+            let detailsHtml = `
+                <div class="space-y-4">
+                    <div class="bg-white/50 p-4 rounded-xl">
+                        <h4 class="font-bold text-gray-700 mb-2">Student Information</h4>
+                        <p class="text-sm">Name: ${studentData.studentName}</p>
+                        <p class="text-sm">ID: ${studentData.studentId}</p>
+                        <p class="text-sm">Group: ${studentData.groupName}</p>
+                        <p class="text-sm">Module: ${studentData.moduleName}</p>
+                    </div>
+                    <div class="bg-white/50 p-4 rounded-xl">
+                        <h4 class="font-bold text-gray-700 mb-2">Attendance Summary</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><p class="text-xs text-gray-500">Semester Duration</p><p class="text-lg font-bold">${studentData.semesterWeeks} weeks</p></div>
+                            <div><p class="text-xs text-gray-500">Sessions/Week</p><p class="text-lg font-bold">${studentData.totalSessions}</p></div>
+                            <div><p class="text-xs text-gray-500">Total Expected</p><p class="text-lg font-bold">${studentData.expectedTotal}</p></div>
+                            <div><p class="text-xs text-gray-500">Present</p><p class="text-lg font-bold text-emerald-600">${studentData.present}</p></div>
+                            <div><p class="text-xs text-gray-500">Absent</p><p class="text-lg font-bold text-red-600">${studentData.absent}</p></div>
+                            <div><p class="text-xs text-gray-500">Attendance Rate</p><p class="text-lg font-bold">${Math.round((studentData.present / studentData.expectedTotal) * 100)}%</p></div>
+                        </div>
+                    </div>
+                    <div class="bg-white/50 p-4 rounded-xl">
+                        <h4 class="font-bold text-gray-700 mb-2">Weekly Breakdown</h4>
+                        <p class="text-sm text-gray-600 mb-2">This student has completed ${studentData.present} out of ${studentData.expectedTotal} sessions.</p>
+                        <div class="w-full bg-gray-200 rounded-full h-4">
+                            <div class="bg-indigo-600 h-4 rounded-full" style="width: ${(studentData.present / studentData.expectedTotal) * 100}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-content').innerHTML = detailsHtml;
+            modal.classList.remove('hidden');
+        }
+
+        function closeStudentModal() {
+            document.getElementById('student-detail-modal').classList.add('hidden');
+        }
+
+        function exportStudentAttendance() {
+            const data = [
+                ["STUDENT ATTENDANCE REPORT"],
+                ["================================="],
+                [`Generated on:`, new Date().toLocaleString()],
+                [""],
+                ["SUMMARY STATISTICS"],
+                ["================================="],
+                [`Total Students:`, document.getElementById('total-students').textContent],
+                [`Total Modules:`, document.getElementById('total-modules').textContent],
+                [`Total Sessions:`, document.getElementById('total-sessions-count').textContent],
+                [`Average Attendance:`, document.getElementById('avg-attendance').textContent],
+                [`Total Absences:`, document.getElementById('total-absences').textContent],
+                [""],
+                ["STUDENT ATTENDANCE DETAILS"],
+                ["================================="],
+                ["Student ID", "Student Name", "Group", "Module", "Expected Sessions", "Present", "Absent", "Attendance %", "Status"]
+            ];
+            
+            studentAttendanceData.forEach(item => {
+                const attendanceRate = Math.round((item.present / item.expectedTotal) * 100) || 0;
+                let status = 'Good';
+                if (attendanceRate < 75) status = 'Warning';
+                if (attendanceRate < 50) status = 'Critical';
+                
+                data.push([
+                    item.studentId,
+                    item.studentName,
+                    item.groupName,
+                    item.moduleName,
+                    item.expectedTotal,
+                    item.present,
+                    item.absent,
+                    attendanceRate + '%',
+                    status
+                ]);
+            });
+            
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            XLSX.utils.book_append_sheet(wb, ws, "Student Attendance");
+            XLSX.writeFile(wb, `Student_Attendance_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        async function loadProfessorAttendance() {
+            const tbody = document.getElementById('prof-hours-list');
+            const detailTbody = document.getElementById('prof-sessions-detail');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">Loading professor attendance data...</td></tr>';
+            detailTbody.innerHTML = '';
+            
+            try {
+                const profId = document.getElementById('prof-filter').value;
+                
+                const snap = await db.collection('attendance_reports').where('status', '==', 'finalized').get();
+                
+                let sessions = [];
+                let professorStats = new Map();
+                
+                snap.forEach(doc => {
+                    const report = doc.data();
+                    const reportDate = new Date(report.lastUpdated || report.date);
+                    
+                    if (profId !== 'all' && report.profId !== profId) return;
+                        
+                    // Accurately count only completed sessions, fallback to total if array missing
+                    const completedCount = report.completedSessions ? report.completedSessions.length : (report.totalSessions || 1);
+                    const sessionDuration = 1.5;
+                    const totalHours = completedCount * sessionDuration;
+                    
+                    sessions.push({
+                        date: reportDate,
+                        professorId: report.profId,
+                        professorName: report.profName || 'Unknown',
+                        module: report.moduleName || 'Unknown',
+                        group: report.groupName || 'Unknown',
+                        sessions: completedCount,
+                        hours: totalHours,
+                        status: report.status
+                    });
+                    
+                    const key = report.profId;
+                    if (!professorStats.has(key)) {
+                        professorStats.set(key, { 
+                            id: report.profId, 
+                            name: report.profName || 'Unknown', 
+                            email: '', 
+                            totalSessions: 0, 
+                            totalHours: 0, 
+                            modules: new Set(),
+                            groupStats: {} 
+                        });
+                    }
+                    
+                    const stats = professorStats.get(key);
+                    stats.totalSessions += completedCount;
+                    stats.totalHours += totalHours;
+                    stats.modules.add(report.moduleName || 'Unknown');
+
+                    // Track hours per specific group for this professor
+                    const groupKey = (report.groupName || 'Unknown') + '|' + (report.moduleName || 'Unknown');
+                    if(!stats.groupStats[groupKey]) {
+                        stats.groupStats[groupKey] = { 
+                            group: report.groupName || 'Unknown', 
+                            module: report.moduleName || 'Unknown', 
+                            sessions: 0, 
+                            hours: 0 
+                        };
+                    }
+                    stats.groupStats[groupKey].sessions += completedCount;
+                    stats.groupStats[groupKey].hours += totalHours;
+                });
+                
+                for (let [key, stats] of professorStats) {
+                    const profDoc = await db.collection('professors').doc(key).get();
+                    if (profDoc.exists) stats.email = profDoc.data().email || '';
+                }
+                
+                professorSessions = sessions;
+                
+                const totalHours = Array.from(professorStats.values()).reduce((sum, p) => sum + p.totalHours, 0);
+                const totalSessions = Array.from(professorStats.values()).reduce((sum, p) => sum + p.totalSessions, 0);
+                const avgHours = professorStats.size > 0 ? (totalHours / professorStats.size).toFixed(1) : 0;
+                
+                document.getElementById('total-prof-hours').textContent = totalHours.toFixed(1);
+                document.getElementById('total-prof-sessions').textContent = totalSessions;
+                document.getElementById('avg-hours-per-prof').textContent = avgHours;
+                document.getElementById('active-profs').textContent = professorStats.size;
+                
+                if (professorStats.size === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-gray-500">No professor attendance data found</td></tr>';
+                } else {
+                    tbody.innerHTML = '';
+                    professorStats.forEach(stats => {
+                        const tr = document.createElement('tr');
+                        tr.className = "floating-row";
+                        tr.innerHTML = `
+                            <td class="p-4 font-bold text-gray-800">${stats.name}</td>
+                            <td class="p-4 text-gray-600">${stats.email || 'N/A'}</td>
+                            <td class="p-4 text-gray-700">${stats.totalSessions}</td>
+                            <td class="p-4 text-gray-700 font-bold text-indigo-600">${stats.totalHours.toFixed(1)} h</td>
+                            <td class="p-4 text-gray-600">${stats.modules.size}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="viewProfessorDetails('${stats.id}')" class="text-indigo-600 hover:text-indigo-800 mr-3"><i class="fas fa-eye"></i> View</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+                
+                if (sessions.length === 0) {
+                    detailTbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-gray-500">No session details found</td></tr>';
+                } else {
+                    detailTbody.innerHTML = '';
+                    sessions.sort((a, b) => b.date - a.date).forEach(session => {
+                        const tr = document.createElement('tr');
+                        tr.className = "floating-row";
+                        tr.innerHTML = `
+                            <td class="p-4 text-gray-700">${session.date.toLocaleDateString()}</td>
+                            <td class="p-4 font-medium text-gray-800">${session.professorName}</td>
+                            <td class="p-4 text-gray-600">${session.module}</td>
+                            <td class="p-4 text-gray-600">${session.group}</td>
+                            <td class="p-4 text-gray-600">${session.sessions}</td>
+                            <td class="p-4 text-gray-600">${session.hours.toFixed(1)} h</td>
+                            <td class="p-4"><span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">Completed</span></td>
+                        `;
+                        detailTbody.appendChild(tr);
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error loading professor attendance:', error);
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">Error loading data: ${error.message}</td></tr>`;
+            }
+        }
+        
+        window.viewProfessorDetails = function(profId) {
+            const profSessions = professorSessions.filter(s => s.professorId === profId);
+            const profName = profSessions[0]?.professorName || 'Professor';
+            
+            // Calculate Group Stats Breakdown
+            const groupStats = {};
+            let totalProfHours = 0;
+            let totalProfSessions = 0;
+
+            profSessions.forEach(s => {
+                const gKey = s.group + '|' + s.module;
+                if(!groupStats[gKey]) {
+                    groupStats[gKey] = { group: s.group, module: s.module, sessions: 0, hours: 0 };
+                }
+                groupStats[gKey].sessions += s.sessions;
+                groupStats[gKey].hours += s.hours;
+                totalProfHours += s.hours;
+                totalProfSessions += s.sessions;
+            });
+
+            // Store for Excel export
+            window.currentProfGroupStats = groupStats;
+            window.currentProfSessions = profSessions;
+            window.currentProfName = profName;
+            
+            let detailsHtml = `
+                <div class="space-y-4">
+                    <div class="bg-white/50 p-4 rounded-xl flex justify-between items-center">
+                        <div>
+                            <h4 class="font-bold text-gray-700 text-lg">${profName}</h4>
+                            <p class="text-sm text-gray-500">Total: ${totalProfHours.toFixed(1)} hours (${totalProfSessions} sessions)</p>
+                        </div>
+                        <button onclick="downloadSpecificProfExcel()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold shadow transition flex items-center text-sm">
+                            <i class="fas fa-file-excel mr-2"></i> Export Prof Details
+                        </button>
+                    </div>
+
+                    <div class="bg-white/50 p-4 rounded-xl">
+                        <h4 class="font-bold text-gray-700 mb-3 border-b pb-2"><i class="fas fa-users mr-2 text-indigo-500"></i>Hours by Group</h4>
+                        <div class="max-h-48 overflow-y-auto mb-2">
+                            <table class="w-full text-sm">
+                                <thead class="bg-indigo-50 text-indigo-800">
+                                    <tr><th class="p-2 text-left rounded-tl-lg">Group</th><th class="p-2 text-left">Module</th><th class="p-2 text-center">Sessions</th><th class="p-2 text-right rounded-tr-lg">Hours</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${Object.values(groupStats).map(g => `<tr class="border-b border-gray-100 hover:bg-white/60"><td class="p-2 font-medium">${g.group}</td><td class="p-2 text-gray-600">${g.module}</td><td class="p-2 text-center text-gray-600">${g.sessions}</td><td class="p-2 text-right font-bold text-indigo-600">${g.hours.toFixed(1)} h</td></tr>`).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white/50 p-4 rounded-xl">
+                        <h4 class="font-bold text-gray-700 mb-3 border-b pb-2"><i class="fas fa-list mr-2 text-pink-500"></i>Session History</h4>
+                        <div class="max-h-60 overflow-y-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-100 text-gray-600">
+                                    <tr><th class="p-2 text-left rounded-tl-lg">Date</th><th class="p-2 text-left">Module</th><th class="p-2 text-left">Group</th><th class="p-2 text-right rounded-tr-lg">Hours</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${profSessions.map(s => `<tr class="border-b border-gray-100 hover:bg-white/60"><td class="p-2">${s.date.toLocaleDateString()}</td><td class="p-2">${s.module}</td><td class="p-2">${s.group}</td><td class="p-2 text-right font-bold">${s.hours.toFixed(1)} h</td></tr>`).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            openDetailPanel("Professor Details", detailsHtml, () => closeDetailPanel());
+        };
+
+        window.downloadSpecificProfExcel = function() {
+            if (!window.currentProfGroupStats || !window.currentProfSessions) return;
+
+            const data = [
+                ["PROFESSOR DETAILED REPORT"],
+                ["================================="],
+                [`Professor:`, window.currentProfName],
+                [`Generated on:`, new Date().toLocaleString()],
+                [""],
+                ["SUMMARY BY GROUP"],
+                ["================================="],
+                ["Group", "Module", "Sessions", "Total Hours"]
+            ];
+
+            let totalHrs = 0;
+            let totalSess = 0;
+
+            Object.values(window.currentProfGroupStats).forEach(g => {
+                data.push([g.group, g.module, g.sessions, g.hours.toFixed(1) + " h"]);
+                totalHrs += g.hours;
+                totalSess += g.sessions;
+            });
+
+            data.push(["", "", "Total:", totalHrs.toFixed(1) + " h"]);
+            data.push([""]);
+            data.push(["DETAILED SESSION HISTORY"]);
+            data.push(["================================="]);
+            data.push(["Date", "Module", "Group", "Sessions", "Hours", "Status"]);
+
+            window.currentProfSessions.forEach(s => {
+                data.push([
+                    s.date.toLocaleDateString(),
+                    s.module,
+                    s.group,
+                    s.sessions,
+                    s.hours.toFixed(1) + " h",
+                    s.status
+                ]);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            ws['!cols'] = [{wch:20}, {wch:25}, {wch:15}, {wch:15}, {wch:15}, {wch:15}];
+            XLSX.utils.book_append_sheet(wb, ws, "Prof Details");
+            XLSX.writeFile(wb, `Prof_Details_${window.currentProfName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+        };
+        
+        function downloadProfessorHours() {
+            const data = [
+                ["PROFESSOR TEACHING HOURS REPORT"],
+                ["================================="],
+                [`Generated on:`, new Date().toLocaleString()],
+                [`Period:`, "All Time"],
+                [""],
+                ["SUMMARY STATISTICS"],
+                ["================================="],
+                [`Total Teaching Hours:`, document.getElementById('total-prof-hours').textContent],
+                [`Total Sessions:`, document.getElementById('total-prof-sessions').textContent],
+                [`Average Hours/Professor:`, document.getElementById('avg-hours-per-prof').textContent],
+                [`Active Professors:`, document.getElementById('active-profs').textContent],
+                [""],
+                ["PROFESSOR HOURS DETAILS"],
+                ["================================="],
+                ["Professor", "Email", "Sessions", "Hours", "Modules Taught"]
+            ];
+            
+            const rows = document.querySelectorAll('#prof-hours-list tr');
+            rows.forEach(row => {
+                if (row.cells) {
+                    data.push([
+                        row.cells[0]?.textContent || '',
+                        row.cells[1]?.textContent || '',
+                        row.cells[2]?.textContent || '',
+                        row.cells[3]?.textContent || '',
+                        row.cells[4]?.textContent || ''
+                    ]);
+                }
+            });
+            
+            data.push([""], ["DETAILED SESSION LOG"], ["================================="], ["Date", "Professor", "Module", "Group", "Sessions", "Hours", "Status"]);
+            
+            const sessionRows = document.querySelectorAll('#prof-sessions-detail tr');
+            sessionRows.forEach(row => {
+                if (row.cells) {
+                    data.push([
+                        row.cells[0]?.textContent || '',
+                        row.cells[1]?.textContent || '',
+                        row.cells[2]?.textContent || '',
+                        row.cells[3]?.textContent || '',
+                        row.cells[4]?.textContent || '',
+                        row.cells[5]?.textContent || '',
+                        row.cells[6]?.textContent || ''
+                    ]);
+                }
+            });
+            
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            XLSX.utils.book_append_sheet(wb, ws, "Professor Hours");
+            XLSX.writeFile(wb, `Professor_Hours_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function filterReports(filter) {
+            currentFilter = filter;
+            document.getElementById('filter-all').classList.remove('bg-white', 'text-indigo-600');
+            document.getElementById('filter-finalized').classList.remove('bg-white', 'text-emerald-600');
+            document.getElementById('filter-progress').classList.remove('bg-white', 'text-amber-600');
+            
+            if (filter === 'all') document.getElementById('filter-all').classList.add('bg-white', 'text-indigo-600');
+            else if (filter === 'finalized') document.getElementById('filter-finalized').classList.add('bg-white', 'text-emerald-600');
+            else if (filter === 'in_progress') document.getElementById('filter-progress').classList.add('bg-white', 'text-amber-600');
+            
+            displayReports();
+        }
+        
+        document.getElementById('report-search')?.addEventListener('input', (e) => {
+            searchTerm = e.target.value.toLowerCase();
+            displayReports();
+        });
+        
+        function displayReports() {
+            const grid = document.getElementById('reports-grid');
+            
+            let filtered = allReports;
+            if (currentFilter !== 'all') filtered = filtered.filter(r => r.status === currentFilter);
+            if (searchTerm) filtered = filtered.filter(r => (r.moduleName?.toLowerCase().includes(searchTerm) || false) || (r.groupName?.toLowerCase().includes(searchTerm) || false) || (r.profName?.toLowerCase().includes(searchTerm) || false));
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="text-center p-10 glass-card"><i class="fas fa-file-invoice text-4xl text-gray-400 mb-3"></i><p class="text-gray-500 font-medium">No reports found matching your criteria</p><p class="text-xs text-gray-400 mt-2">Try adjusting your filters or search term</p></div>`;
+                return;
+            }
+            
+            grid.innerHTML = '';
+            filtered.forEach(report => {
+                const date = report.lastUpdated || report.date || new Date().toISOString();
+                const formattedDate = new Date(date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+                
+                const totalStudents = report.students?.length || 0;
+                let totalPresent = 0;
+                let totalSessions = report.totalSessions || 1;
+                
+                if (report.students) {
+                    report.students.forEach(s => {
+                        for(let i=1; i<=totalSessions; i++) if (s[`s${i}`] === 'present') totalPresent++;
+                    });
+                }
+                
+                const totalPossible = totalStudents * totalSessions;
+                const attendanceRate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
+                const statusClass = report.status === 'finalized' ? 'badge-finalized' : 'badge-progress';
+                const statusText = report.status === 'finalized' ? 'FINALIZED' : 'IN PROGRESS';
+                
+                const card = document.createElement('div');
+                card.className = "glass-card p-6 report-card";
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-3"><h3 class="text-xl font-bold text-gray-800">${report.moduleName || 'Unknown Module'}</h3><span class="session-badge ${statusClass}">${statusText}</span></div>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div><p class="text-xs text-gray-500 uppercase">Group</p><p class="font-semibold text-gray-700">${report.groupName || 'Unknown'}</p></div>
+                                <div><p class="text-xs text-gray-500 uppercase">Professor</p><p class="font-semibold text-gray-700">${report.profName || 'Unknown'}</p></div>
+                                <div><p class="text-xs text-gray-500 uppercase">Sessions</p><p class="font-semibold text-gray-700">${totalSessions} (${report.completedSessions?.length || 0} completed)</p></div>
+                                <div><p class="text-xs text-gray-500 uppercase">Attendance</p><p class="font-semibold text-gray-700">${totalPresent}/${totalPossible} (${attendanceRate}%)</p></div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs text-gray-400"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</p>
+                                <div class="flex gap-2">
+                                    <button onclick="viewReportDetails('${report.id}')" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold mr-3"><i class="fas fa-eye mr-1"></i> Details</button>
+                                    <button onclick="downloadReport('${report.id}')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition flex items-center shadow-md"><i class="fas fa-file-excel mr-2"></i> Download Excel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            
+            updateSummaryStats();
+        }
+        
+        function updateSummaryStats() {
+            document.getElementById('total-reports').textContent = allReports.length;
+            document.getElementById('finalized-reports').textContent = allReports.filter(r => r.status === 'finalized').length;
+            document.getElementById('progress-reports').textContent = allReports.filter(r => r.status === 'in_progress').length;
+            
+            const totalSessions = allReports.reduce((sum, r) => sum + (r.totalSessions || 1), 0);
+            document.getElementById('total-sessions').textContent = totalSessions;
+            document.getElementById('reports-summary').classList.remove('hidden');
+        }
+        
+        async function loadAttendanceReports() {
+            const grid = document.getElementById('reports-grid');
+            grid.innerHTML = '<p id="reports-loading" class="text-gray-500 font-medium p-8 glass-card"><i class="fas fa-spinner fa-spin mr-2"></i> Loading reports...</p>'; 
+
+            try {
+                const snap = await db.collection('attendance_reports').get();
+                if (snap.empty) {
+                    grid.innerHTML = '<div class="text-center p-10 glass-card"><i class="fas fa-file-invoice text-4xl text-gray-400 mb-3"></i><p class="text-gray-500 font-medium">No attendance reports found in database</p><p class="text-xs text-gray-400 mt-2">Reports will appear here when professors start taking attendance</p></div>';
+                    return;
+                }
+
+                allReports = [];
+                snap.forEach(doc => allReports.push({ id: doc.id, ...doc.data() }));
+                allReports.sort((a, b) => new Date(b.lastUpdated || b.date || 0) - new Date(a.lastUpdated || a.date || 0));
+                displayReports();
+                
+            } catch(e) {
+                console.error("Error loading reports:", e);
+                grid.innerHTML = `<div class="text-center p-10 glass-card rounded-2xl"><i class="fas fa-exclamation-triangle text-3xl text-red-500 mb-3"></i><p class="text-red-500 font-bold">Failed to load reports</p><p class="text-gray-600 text-sm mt-2">Error: ${e.message}</p><p class="text-gray-500 text-xs mt-4">Check browser console for more details</p><button onclick="loadAttendanceReports()" class="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold"><i class="fas fa-redo mr-2"></i> Retry</button></div>`;
+            }
+        }
+
+        function viewReportDetails(reportId) {
+            const report = allReports.find(r => r.id === reportId);
+            if (!report) return;
+            
+            let detailsHtml = `
+                <div class="space-y-4">
+                    <div class="bg-white/50 p-4 rounded-xl">
+                        <h4 class="font-bold text-gray-700 mb-2">Report Information</h4>
+                        <p class="text-sm">Module: ${report.moduleName}</p>
+                        <p class="text-sm">Group: ${report.groupName}</p>
+                        <p class="text-sm">Professor: ${report.profName}</p>
+                        <p class="text-sm">Total Sessions: ${report.totalSessions || 1}</p>
+                        <p class="text-sm">Completed: ${report.completedSessions?.length || 0}</p>
+                        <p class="text-sm">Status: ${report.status}</p>
+                    </div>
+                    <div class="bg-white/50 p-4 rounded-xl">
+                        <h4 class="font-bold text-gray-700 mb-2">Session Dates</h4>
+                        ${report.sessionDates ? Object.entries(report.sessionDates).map(([session, date]) => `<p class="text-sm">Session ${session}: ${new Date(date).toLocaleString()}</p>`).join('') : '<p class="text-sm text-gray-500">No session dates recorded</p>'}
+                    </div>
+                    <div class="bg-white/50 p-4 rounded-xl">
+                        <h4 class="font-bold text-gray-700 mb-2">Students (${report.students?.length || 0})</h4>
+                        <div class="max-h-60 overflow-y-auto">
+                            ${report.students?.map(s => {
+                                let presentCount = 0;
+                                for(let i=1; i<=(report.totalSessions || 1); i++) if (s[`s${i}`] === 'present') presentCount++;
+                                return `<div class="flex justify-between items-center py-2 border-b border-gray-100"><span class="text-sm font-medium">${s.name}</span><span class="text-xs ${presentCount === (report.totalSessions || 1) ? 'text-emerald-600' : 'text-amber-600'}">${presentCount}/${report.totalSessions || 1} present</span></div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            openDetailPanel("Report Details", detailsHtml, () => closeDetailPanel());
+        }
+
+        async function downloadReport(reportId) {
+            const doc = await db.collection('attendance_reports').doc(reportId).get();
+            if (!doc.exists) { showAlert('Report not found!', 'error'); return; }
+
+            const report = doc.data();
+            const sessionCount = report.totalSessions || 1;
+            
+            let totalPresent = 0;
+            let totalStudents = report.students?.length || 0;
+            let studentStats = [];
+            
+            if (report.students) {
+                report.students.forEach(s => {
+                    let presentCount = 0;
+                    for(let i=1; i<=sessionCount; i++) if (s[`s${i}`] === 'present') presentCount++;
+                    totalPresent += presentCount;
+                    studentStats.push({ ...s, presentCount, rate: Math.round((presentCount / sessionCount) * 100) });
+                });
+            }
+            
+            const totalPossible = totalStudents * sessionCount;
+            const overallRate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
+            
+            const excelData = [
+                ["UNIVERSITY ATTENDANCE SHEET"],
+                ["================================="],
+                ["Report ID:", reportId],
+                ["Professor:", report.profName || 'N/A'],
+                ["Module:", report.moduleName || 'N/A'],
+                ["Group:", report.groupName || 'N/A'],
+                [`Date Range:`, report.sessionDates ? `${new Date(Object.values(report.sessionDates)[0]).toLocaleDateString()} - ${new Date(Object.values(report.sessionDates)[Object.values(report.sessionDates).length-1]).toLocaleDateString()}` : new Date(report.date).toLocaleDateString()],
+                ["Total Sessions:", sessionCount],
+                ["Completed Sessions:", report.completedSessions?.length || 0],
+                ["Status:", report.status === 'finalized' ? 'FINALIZED' : 'IN PROGRESS'],
+                ["Last Updated:", new Date(report.lastUpdated || report.date).toLocaleString()],
+                [""],
+                ["ATTENDANCE SUMMARY"],
+                ["================================="],
+                [`Total Students:`, totalStudents],
+                [`Total Presences:`, totalPresent],
+                [`Total Absences:`, totalPossible - totalPresent],
+                [`Overall Attendance Rate:`, `${overallRate}%`],
+                [""]
+            ];
+
+            const headerRow = ["Student ID", "Student Name"];
+            for(let i=1; i<=sessionCount; i++) headerRow.push(`Session ${i}`);
+            headerRow.push("Present Count");
+            headerRow.push("Attendance Rate");
+            excelData.push(headerRow);
+
+            studentStats.forEach(s => {
+                const row = [s.id, s.name];
+                for(let i=1; i<=sessionCount; i++) row.push((s[`s${i}`] || 'N/A').toUpperCase());
+                row.push(`${s.presentCount}/${sessionCount}`);
+                row.push(`${s.rate}%`);
+                excelData.push(row);
+            });
+
+            excelData.push([""], ["================================="], ["Report generated on:", new Date().toLocaleString()]);
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+            ws['!cols'] = [{wch:20}, {wch:30}, ...Array(sessionCount).fill({wch:15}), {wch:18}, {wch:18}];
+            XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+            XLSX.writeFile(wb, `Attendance_${report.moduleName || 'Module'}_${report.groupName || 'Group'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        auth.onAuthStateChanged(async (u) => {
+            if (u) {
+                currentUser = u;
+                const userDoc = await db.collection('users').doc(u.uid).get();
+                
+                if (userDoc.exists) {
+                    currentUserData = userDoc.data();
+                } else {
+                    const role = u.email === SUPER_ADMIN_EMAIL ? 'superadmin' : 'admin';
+                    currentUserData = { email: u.email, role: role, name: u.email.split('@')[0] };
+                    await db.collection('users').doc(u.uid).set(currentUserData);
+                }
+                
+                $('view-login').classList.add('hidden');
+                $('admin-email').innerText = u.email;
+                document.getElementById('user-role-badge').textContent = currentUserData.role === 'superadmin' ? 'Super Admin' : 'Admin';
+                
+                if (currentUserData.role === 'superadmin') {
+                    $('admin-block').classList.remove('hidden');
+                    loadAdmins();
+                } else {
+                    $('admin-block').classList.add('hidden');
+                }
+                
+                document.getElementById('profile-name').value = currentUserData.name || '';
+                document.getElementById('profile-email').value = u.email;
+                document.getElementById('profile-phone').value = currentUserData.phone || '';
+                document.getElementById('profile-address').value = currentUserData.address || '';
+                
+                nav('view-home');
+            } else {
+                $('view-login').classList.remove('hidden');
+                $('dashboard-container')?.classList.add('hidden');
+            }
+        });
+
+        async function loadAdmins() {
+            const s = await db.collection('users').where('role', '==', 'admin').get();
+            $('admin-list').innerHTML = s.docs.map(d => `<div class="flex justify-between p-3 bg-white/50 rounded-xl mb-2 items-center">
+                <span class="font-bold text-gray-600">${d.data().email}</span>
+                <button onclick="openDelete('users','${d.id}', loadAdmins)" class="text-red-400"><i class="fas fa-trash"></i></button>
+            </div>`).join('');
+        }
+        
+        function login() {
+            const e = $('loginEmail').value, p = $('loginPass').value;
+            auth.signInWithEmailAndPassword(e,p).catch(err => {
+                console.error(err);
+                showAlert('Invalid email or password. Please try again.', 'error');
+            });
+        }
+        
+        function logout() {
+            auth.signOut();
+        }
+
+        async function updateProfile() {
+            const name = document.getElementById('profile-name').value;
+            const phone = document.getElementById('profile-phone').value;
+            const address = document.getElementById('profile-address').value;
+            const currentPass = document.getElementById('current-password').value;
+            const newPass = document.getElementById('new-password').value;
+            const confirmPass = document.getElementById('confirm-password').value;
+            
+            if (!name && !phone && !address && !newPass) {
+                showAlert('Please fill at least one field to update', 'warning');
+                return;
+            }
+            
+            try {
+                const updates = {};
+                if (name) updates.name = name;
+                if (phone) updates.phone = phone;
+                if (address) updates.address = address;
+                
+                if (Object.keys(updates).length > 0) {
+                    await db.collection('users').doc(currentUser.uid).update(updates);
+                }
+                
+                if (newPass) {
+                    if (newPass !== confirmPass) {
+                        showAlert('New passwords do not match', 'warning');
+                        return;
+                    }
+                    
+                    if (!currentPass) {
+                        showAlert('Please enter current password', 'warning');
+                        return;
+                    }
+                    
+                    const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, currentPass);
+                    await currentUser.reauthenticateWithCredential(credential);
+                    await currentUser.updatePassword(newPass);
+                }
+                
+                showAlert('Profile updated successfully!', 'success');
+                document.getElementById('current-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+                
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                if (userDoc.exists) {
+                    currentUserData = userDoc.data();
+                }
+                
+            } catch(e) {
+                showAlert('Error: ' + e.message, 'error');
+            }
+        }
+
+        async function createAdmin() {
+            if (currentUserData.role !== 'superadmin') {
+                showAlert('Only Super Admin can create new admins', 'warning');
+                return;
+            }
+            
+            const e = $('newAdEmail').value, p = $('newAdPass').value;
+            if(!e || !p) return;
+            
+            try {
+                const sa = firebase.initializeApp(firebaseConfig, 'secondaryAdminAuth');
+                const uc = await sa.auth().createUserWithEmailAndPassword(e, p);
+                await db.collection('users').doc(uc.user.uid).set({email:e, role: 'admin', name: e.split('@')[0]});
+                sa.auth().signOut();
+                sa.delete();
+                loadAdmins();
+                $('newAdEmail').value = '';
+                $('newAdPass').value = '';
+                showAlert("Admin created!", 'success');
+            } catch(e) { 
+                showAlert(e.message, 'error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('report-search');
+            if (searchInput) searchInput.addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); displayReports(); });
+            
+            document.getElementById('loginEmail').value = SUPER_ADMIN_EMAIL;
+            document.getElementById('loginPass').value = SUPER_ADMIN_PASS;
+        });
+
+        // Enter key navigation for login
+        document.getElementById('loginEmail').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('loginPass').focus();
+            }
+        });
+
+        document.getElementById('loginPass').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                login();
+            }
+        });
+    </script>
+</body>
+</html>
