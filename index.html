@@ -718,7 +718,7 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         const SUPER_ADMIN_EMAIL = 'admin@his.edu.dz';
-        const SUPER_ADMIN_PASS = 'admin123';
+        // Password explicitly removed from source code for maximum security
 
         let ctx = {
             filiere: null,
@@ -1063,6 +1063,7 @@
                     <div class="bg-white/50 p-4 rounded-xl border border-white mb-3">
                         <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Day of Week</label>
                         <select id="inp-day" class="input-pill w-full p-3 rounded-lg cursor-pointer" required>
+                            <option value="Saturday">Saturday</option>
                             <option value="Sunday">Sunday</option>
                             <option value="Monday">Monday</option>
                             <option value="Tuesday">Tuesday</option>
@@ -1192,7 +1193,7 @@
                             options += `<option value="${g.id}" ${selected}>${g.name}</option>`;
                         });
                     } else if (f.key === 'day') {
-                        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                        const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                         days.forEach(day => {
                             const selected = day === (data.schedule?.day || '') ? 'selected' : '';
                             options += `<option value="${day}" ${selected}>${day}</option>`;
@@ -2627,8 +2628,7 @@
             const searchInput = document.getElementById('report-search');
             if (searchInput) searchInput.addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); displayReports(); });
             
-            document.getElementById('loginEmail').value = SUPER_ADMIN_EMAIL;
-            document.getElementById('loginPass').value = SUPER_ADMIN_PASS;
+            // Autofill removed for security
         });
 
         // Enter key navigation for login
